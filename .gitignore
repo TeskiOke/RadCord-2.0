@@ -3,10 +3,17 @@ bin/
 obj/
 publish_release/
 publish/
+build_check*/
+build_out*/
+build_v*/
+
+# Logs
+*.log
+crash_*.log
 
 # Local profile / config data
 profile*/
-*.json.bak
+config.json
 
 # Visual Studio
 *.user
