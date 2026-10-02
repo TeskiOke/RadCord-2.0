@@ -1,0 +1,990 @@
+<Window x:Class="RadCord.Views.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="RadCord" Height="720" Width="1100"
+        MinHeight="520" MinWidth="820"
+        Background="{DynamicResource BgMidBrush}"
+        FontFamily="Segoe UI" FontSize="14"
+        Foreground="{DynamicResource TextPrimaryBrush}"
+        Closing="Window_Closing"
+        PreviewKeyDown="Window_KeyDown"
+        PreviewKeyUp="Window_KeyUp"
+        PreviewMouseDown="Window_MouseDown"
+        PreviewMouseUp="Window_MouseUp">
+
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="68"/>                                 <!-- 0: Server bar -->
+            <ColumnDefinition Width="240" MinWidth="160" MaxWidth="400"/>  <!-- 1: Sidebar -->
+            <ColumnDefinition Width="4"/>                                  <!-- 2: Splitter -->
+            <ColumnDefinition Width="*" MinWidth="380"/>                   <!-- 3: Content -->
+            <ColumnDefinition Width="4"/>                                  <!-- 4: Splitter -->
+            <ColumnDefinition Width="200" MinWidth="120" MaxWidth="350"/>  <!-- 5: Members -->
+        </Grid.ColumnDefinitions>
+
+        <GridSplitter Grid.Column="2" Width="4" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+                      Background="{StaticResource SeparatorBrush}" Cursor="SizeWE"/>
+        <GridSplitter Grid.Column="4" Width="4" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+                      Background="{StaticResource SeparatorBrush}" Cursor="SizeWE"/>
+
+        <!-- ══ SERVER BAR (68px) ══════════════════════════════════════════ -->
+        <Border Grid.Column="0" Background="{StaticResource BgDeepBrush}">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Hidden" Margin="0,12,0,0">
+                    <ItemsControl ItemsSource="{Binding Networks}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Button Width="44" Height="44" Margin="0,3"
+                                        HorizontalAlignment="Center"
+                                        Cursor="Hand"
+                                        ToolTip="{Binding ShownName}"
+                                        Click="NetworkIcon_Click"
+                                        Tag="{Binding}">
+                                    <Button.Template>
+                                        <ControlTemplate TargetType="Button">
+                                            <Grid Width="44" Height="44">
+                                                <Ellipse Width="44" Height="44"
+                                                         Fill="{StaticResource AccentBrush}"/>
+                                                <TextBlock
+                                                    Text="{Binding ShownName, Converter={StaticResource StringToInitial}}"
+                                                    FontSize="18" FontWeight="Bold" Foreground="White"
+                                                    HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                            </Grid>
+                                        </ControlTemplate>
+                                    </Button.Template>
+                                    <Button.ContextMenu>
+                                        <ContextMenu>
+                                            <MenuItem Header="Переименовать" Click="RenameNetwork_Click" Tag="{Binding}"/>
+                                            <MenuItem Header="Удалить" Click="DeleteNetwork_Click" Tag="{Binding}" Foreground="{StaticResource RedBrush}"/>
+                                        </ContextMenu>
+                                    </Button.ContextMenu>
+                                </Button>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+
+                <!-- Bottom buttons -->
+                <StackPanel Grid.Row="1" Margin="0,0,0,14">
+                    <Rectangle Height="1" Margin="12,0,12,10" Fill="{StaticResource BgLightBrush}"/>
+                    <!-- Add server -->
+                    <Button Width="44" Height="44" HorizontalAlignment="Center" Margin="0,3"
+                            Cursor="Hand" ToolTip="Добавить / найти сервер"
+                            Click="AddNetwork_Click">
+                        <Button.Template>
+                            <ControlTemplate TargetType="Button">
+                                <Grid Width="44" Height="44">
+                                    <Ellipse Width="44" Height="44">
+                                        <Ellipse.Fill><SolidColorBrush Color="#FF2B2D31"/></Ellipse.Fill>
+                                    </Ellipse>
+                                    <TextBlock Text="+" FontSize="26" FontWeight="Light"
+                                               Foreground="{StaticResource GreenBrush}"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                                               Margin="0,-2,0,0"/>
+                                </Grid>
+                            </ControlTemplate>
+                        </Button.Template>
+                    </Button>
+                    <!-- Settings -->
+                    <Button Width="44" Height="44" HorizontalAlignment="Center" Margin="0,3"
+                            Cursor="Hand" ToolTip="Настройки"
+                            Click="Settings_Click">
+                        <Button.Template>
+                            <ControlTemplate TargetType="Button">
+                                <Grid Width="44" Height="44">
+                                    <Ellipse Width="44" Height="44">
+                                        <Ellipse.Fill><SolidColorBrush Color="#FF2B2D31"/></Ellipse.Fill>
+                                    </Ellipse>
+                                    <TextBlock Text="⚙" FontSize="20"
+                                               Foreground="{StaticResource TextSecondaryBrush}"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Grid>
+                            </ControlTemplate>
+                        </Button.Template>
+                    </Button>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- ══ SIDEBAR (240px) ════════════════════════════════════════════ -->
+        <Grid Grid.Column="1" Background="{StaticResource BgDarkBrush}">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="50"/>   <!-- Header -->
+                <RowDefinition Height="*"/>    <!-- Channels -->
+                <RowDefinition Height="Auto"/> <!-- Voice bar -->
+                <RowDefinition Height="54"/>   <!-- User panel -->
+            </Grid.RowDefinitions>
+
+            <!-- Header -->
+            <Border Grid.Row="0" BorderBrush="{StaticResource SeparatorBrush}" BorderThickness="0,0,0,1" Padding="16,0">
+                <TextBlock Text="{Binding SelectedNetwork.ShownName, FallbackValue='RadCord'}"
+                           FontSize="15" FontWeight="SemiBold"
+                           Foreground="{StaticResource TextPrimaryBrush}"
+                           VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+            </Border>
+
+            <!-- Channels area -->
+            <ScrollViewer Grid.Row="1" Margin="0,8,0,0">
+                <StackPanel>
+
+                    <!-- ── Empty state (no network selected) ── -->
+                    <StackPanel Margin="20,32,20,0"
+                                Visibility="{Binding SelectedNetwork, Converter={StaticResource InvNullToVis}}">
+                        <TextBlock Text="Нет сервера" FontSize="15" FontWeight="SemiBold"
+                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                   HorizontalAlignment="Center"/>
+                        <TextBlock Text="Нажми &#x2795; чтобы создать или присоединиться к серверу"
+                                   FontSize="12" Foreground="{StaticResource TextMutedBrush}"
+                                   TextWrapping="Wrap" TextAlignment="Center" Margin="0,6,0,0"/>
+                    </StackPanel>
+
+                    <!-- ── Text channels ── -->
+                    <StackPanel Visibility="{Binding SelectedNetwork, Converter={StaticResource NullToVis}}">
+                        <DockPanel Margin="8,4,8,2">
+                            <TextBlock DockPanel.Dock="Left" Text="ТЕКСТОВЫЕ КАНАЛЫ"
+                                       FontSize="11" FontWeight="SemiBold"
+                                       Foreground="{StaticResource TextMutedBrush}"
+                                       VerticalAlignment="Center"/>
+                            <Button DockPanel.Dock="Right" Click="AddTextChannel_Click"
+                                    Cursor="Hand" ToolTip="Создать канал"
+                                    Width="18" Height="18">
+                                <Button.Template>
+                                    <ControlTemplate TargetType="Button">
+                                        <Border x:Name="bg" Background="Transparent" CornerRadius="3">
+                                            <TextBlock Text="+" FontSize="15"
+                                                       Foreground="{StaticResource TextMutedBrush}"
+                                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="bg" Property="Background" Value="{StaticResource BgLightBrush}"/>
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Button.Template>
+                            </Button>
+                        </DockPanel>
+                        <ItemsControl ItemsSource="{Binding TextChannels}" Margin="4,0">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Button Padding="8,7" Margin="0,1"
+                                            Style="{StaticResource ChannelButton}"
+                                            Click="TextChannel_Click" Tag="{Binding Path=.}">
+                                        <Button.ContextMenu>
+                                            <ContextMenu>
+                                                <MenuItem Header="Удалить канал"
+                                                          Foreground="{StaticResource RedBrush}"
+                                                          Tag="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                          Click="DeleteTextChannel_Click"/>
+                                            </ContextMenu>
+                                        </Button.ContextMenu>
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="# " FontSize="15"
+                                                       Foreground="{StaticResource TextMutedBrush}"
+                                                       VerticalAlignment="Center"/>
+                                            <TextBlock Text="{Binding Path=.}"
+                                                       FontSize="14" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+
+                    <!-- ── Voice channels ── -->
+                    <StackPanel Margin="0,8,0,0"
+                                Visibility="{Binding SelectedNetwork, Converter={StaticResource NullToVis}}">
+                        <DockPanel Margin="8,4,8,2">
+                            <TextBlock DockPanel.Dock="Left" Text="ГОЛОСОВЫЕ КАНАЛЫ"
+                                       FontSize="11" FontWeight="SemiBold"
+                                       Foreground="{StaticResource TextMutedBrush}"
+                                       VerticalAlignment="Center"/>
+                            <Button DockPanel.Dock="Right" Click="AddVoiceChannel_Click"
+                                    Cursor="Hand" ToolTip="Создать голосовой канал"
+                                    Width="18" Height="18">
+                                <Button.Template>
+                                    <ControlTemplate TargetType="Button">
+                                        <Border x:Name="bg2" Background="Transparent" CornerRadius="3">
+                                            <TextBlock Text="+" FontSize="15"
+                                                       Foreground="{StaticResource TextMutedBrush}"
+                                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="bg2" Property="Background" Value="{StaticResource BgLightBrush}"/>
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Button.Template>
+                            </Button>
+                        </DockPanel>
+                        <ItemsControl ItemsSource="{Binding VoiceChannelEntries}" Margin="4,0">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel>
+                                        <!-- Channel row -->
+                                        <Button Padding="8,6" Margin="0,1"
+                                                Style="{StaticResource ChannelButton}"
+                                                Click="VoiceChannel_Click" Tag="{Binding Name}">
+                                            <Button.ContextMenu>
+                                                <ContextMenu>
+                                                    <MenuItem Header="Удалить канал"
+                                                              Foreground="{StaticResource RedBrush}"
+                                                              Tag="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                              Click="DeleteVoiceChannel_Click"/>
+                                                </ContextMenu>
+                                            </Button.ContextMenu>
+                                            <DockPanel>
+                                                <TextBlock Text="&#x1F50A; " FontSize="12" VerticalAlignment="Center"/>
+                                                <TextBlock Text="{Binding Name}" FontSize="13"
+                                                           VerticalAlignment="Center" DockPanel.Dock="Left"/>
+                                            </DockPanel>
+                                        </Button>
+                                        <!-- Participants sub-list (Discord style) -->
+                                        <ItemsControl ItemsSource="{Binding Participants}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Grid Margin="20,1,4,1" Height="28"
+                                                          Tag="{Binding}">
+                                                        <Grid.ContextMenu>
+                                                            <ContextMenu Background="#1E1F22" BorderBrush="#3A3B3E" BorderThickness="1">
+                                                                <ContextMenu.Resources>
+                                                                    <Style TargetType="MenuItem">
+                                                                        <Setter Property="Background" Value="Transparent"/>
+                                                                        <Setter Property="Foreground" Value="#DCDDDE"/>
+                                                                        <Setter Property="FontSize" Value="13"/>
+                                                                    </Style>
+                                                                    <Style TargetType="Separator">
+                                                                        <Setter Property="Background" Value="#3A3B3E"/>
+                                                                        <Setter Property="Margin" Value="0,2"/>
+                                                                    </Style>
+                                                                </ContextMenu.Resources>
+                                                                <MenuItem Header="{Binding PlacementTarget.Tag.Nickname, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                                          IsHitTestVisible="False" FontSize="13" FontWeight="Bold"
+                                                                          Foreground="White" Padding="12,9"/>
+                                                                <Separator/>
+                                                                <MenuItem Header="&#x1F507; Заглушить для меня"
+                                                                          Visibility="{Binding PlacementTarget.Tag.CanShowVoiceNotMuted, RelativeSource={RelativeSource AncestorType=ContextMenu}, Converter={StaticResource BoolToVis}}"
+                                                                          Tag="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                                          Click="ContextLocalMute_Click" Padding="12,7"/>
+                                                                <MenuItem Header="&#x1F50A; Включить голос"
+                                                                          Visibility="{Binding PlacementTarget.Tag.CanShowVoiceMuted, RelativeSource={RelativeSource AncestorType=ContextMenu}, Converter={StaticResource BoolToVis}}"
+                                                                          Tag="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                                          Click="ContextLocalMute_Click" Padding="12,7"/>
+                                                                <MenuItem Header="&#x1F509; Громкость участника"
+                                                                          IsHitTestVisible="False" FontSize="10" Foreground="#888" Padding="12,3"
+                                                                          Visibility="{Binding PlacementTarget.Tag.CanMuteVoice, RelativeSource={RelativeSource AncestorType=ContextMenu}, Converter={StaticResource BoolToVis}}"/>
+                                                                <MenuItem Visibility="{Binding PlacementTarget.Tag.CanMuteVoice, RelativeSource={RelativeSource AncestorType=ContextMenu}, Converter={StaticResource BoolToVis}}"
+                                                                          Padding="8,2">
+                                                                    <MenuItem.Header>
+                                                                        <Slider Width="150" Minimum="0" Maximum="100"
+                                                                                Value="{Binding PlacementTarget.Tag.VolumePercent, RelativeSource={RelativeSource AncestorType=ContextMenu}, Mode=OneWay}"
+                                                                                Tag="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                                                ValueChanged="PeerVolSlider_Changed"/>
+                                                                    </MenuItem.Header>
+                                                                </MenuItem>
+                                                                <Separator Visibility="{Binding PlacementTarget.Tag.CanControlStream, RelativeSource={RelativeSource AncestorType=ContextMenu}, Converter={StaticResource BoolToVis}}"/>
+                                                                <MenuItem Header="&#x1F507; Стрим: без звука"
+                                                                          Visibility="{Binding PlacementTarget.Tag.CanShowStreamMuted, RelativeSource={RelativeSource AncestorType=ContextMenu}, Converter={StaticResource BoolToVis}}"
+                                                                          Tag="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                                          Click="ContextStreamMute_Click" Padding="12,7" Foreground="#E05555"/>
+                                                                <MenuItem Header="&#x1F50A; Стрим: со звуком"
+                                                                          Visibility="{Binding PlacementTarget.Tag.CanShowStreamUnmuted, RelativeSource={RelativeSource AncestorType=ContextMenu}, Converter={StaticResource BoolToVis}}"
+                                                                          Tag="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                                          Click="ContextStreamMute_Click" Padding="12,7" Foreground="#23A55A"/>
+                                                                <MenuItem Header="&#x1F509; Громкость стрима"
+                                                                          IsHitTestVisible="False" FontSize="10" Foreground="#888" Padding="12,3"
+                                                                          Visibility="{Binding PlacementTarget.Tag.CanControlStream, RelativeSource={RelativeSource AncestorType=ContextMenu}, Converter={StaticResource BoolToVis}}"/>
+                                                                <MenuItem Visibility="{Binding PlacementTarget.Tag.CanControlStream, RelativeSource={RelativeSource AncestorType=ContextMenu}, Converter={StaticResource BoolToVis}}"
+                                                                          Padding="8,2">
+                                                                    <MenuItem.Header>
+                                                                        <Slider Width="150" Minimum="0" Maximum="100"
+                                                                                Value="{Binding PlacementTarget.Tag.StreamVolume, RelativeSource={RelativeSource AncestorType=ContextMenu}, Mode=OneWay}"
+                                                                                Tag="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                                                ValueChanged="StreamVolSlider_Changed"/>
+                                                                    </MenuItem.Header>
+                                                                </MenuItem>
+                                                                <MenuItem Header="&#x26F6; Открыть стрим в окне"
+                                                                          Visibility="{Binding PlacementTarget.Tag.CanControlStream, RelativeSource={RelativeSource AncestorType=ContextMenu}, Converter={StaticResource BoolToVis}}"
+                                                                          Tag="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                                          Click="ContextOpenStream_Click" Padding="12,7"/>
+                                                            </ContextMenu>
+                                                        </Grid.ContextMenu>
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="28"/>
+                                                            <ColumnDefinition Width="*"/>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                        </Grid.ColumnDefinitions>
+                                                        <Grid Grid.Column="0">
+                                                            <Ellipse Width="22" Height="22"
+                                                                     Fill="{Binding AvatarColor, Converter={StaticResource HexToBrush}}"/>
+                                                            <Ellipse Width="24" Height="24" StrokeThickness="2"
+                                                                     Stroke="{StaticResource GreenBrush}"
+                                                                     Visibility="{Binding IsSpeaking, Converter={StaticResource BoolToVis}}"/>
+                                                            <TextBlock Text="{Binding Initial}" FontSize="10"
+                                                                       FontWeight="Bold" Foreground="White"
+                                                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                        </Grid>
+                                                        <TextBlock Grid.Column="1" Text="{Binding Nickname}"
+                                                                   Margin="6,0,0,0" VerticalAlignment="Center"
+                                                                   FontSize="12" Foreground="{StaticResource TextSecondaryBrush}"
+                                                                   TextTrimming="CharacterEllipsis"/>
+                                                        <StackPanel Grid.Column="2" Orientation="Horizontal">
+                                                            <TextBlock Text="&#x1F3A7;" FontSize="10" Margin="2,0"
+                                                                       Foreground="#E05555"
+                                                                       Visibility="{Binding LocalMuted, Converter={StaticResource BoolToVis}}"/>
+                                                            <TextBlock Text="&#x1F507;" FontSize="10" Margin="2,0"
+                                                                       Visibility="{Binding Muted, Converter={StaticResource BoolToVis}}"/>
+                                                            <TextBlock Text="&#x1F515;" FontSize="10" Margin="2,0"
+                                                                       Visibility="{Binding Deafened, Converter={StaticResource BoolToVis}}"/>
+                                                        </StackPanel>
+                                                    </Grid>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+
+
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- Voice status bar -->
+            <Border Grid.Row="2" Background="{StaticResource BgDeepBrush}"
+                    Visibility="{Binding IsInVoice, Converter={StaticResource BoolToVis}}"
+                    Padding="10,8">
+                <StackPanel>
+                    <!-- Row 1: channel name + disconnect -->
+                    <Grid>
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <Ellipse Width="7" Height="7" Fill="{StaticResource GreenBrush}"
+                                     VerticalAlignment="Center" Margin="0,0,6,0"/>
+                            <TextBlock Text="{Binding CurrentVoiceChannel}"
+                                       FontSize="12" Foreground="{StaticResource GreenBrush}"
+                                       FontWeight="SemiBold" VerticalAlignment="Center"/>
+                        </StackPanel>
+                        <Button HorizontalAlignment="Right" VerticalAlignment="Center"
+                                Style="{StaticResource VoicePillButton}" Padding="6,4"
+                                Click="LeaveVoice_Click" ToolTip="Покинуть канал">
+                            <TextBlock FontFamily="Segoe MDL2 Assets" FontSize="12" Text="&#xE8BB;"
+                                       Foreground="{StaticResource RedBrush}"/>
+                        </Button>
+                    </Grid>
+                    <!-- Row 2: stream button, full width -->
+                    <Button Margin="0,6,0,0" HorizontalAlignment="Stretch"
+                            HorizontalContentAlignment="Center"
+                            Click="ShareScreen_Click" ToolTip="Трансляция экрана">
+                        <Button.Style>
+                            <Style TargetType="Button" BasedOn="{StaticResource VoicePillButton}">
+                                <Setter Property="Padding" Value="10,7"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsSharing}" Value="True">
+                                        <Setter Property="Background" Value="{StaticResource GreenBrush}"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock FontFamily="Segoe MDL2 Assets" FontSize="13" Text="&#xE8B4;"
+                                       Foreground="{StaticResource TextPrimaryBrush}"
+                                       VerticalAlignment="Center" Margin="0,0,6,0"/>
+                            <TextBlock FontSize="12" Foreground="{StaticResource TextPrimaryBrush}"
+                                       VerticalAlignment="Center">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Text" Value="Начать трансляцию"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsSharing}" Value="True">
+                                                <Setter Property="Text" Value="Остановить трансляцию"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+            </Border>
+
+            <!-- User panel -->
+            <Border Grid.Row="3" Background="{StaticResource BgDeepBrush}" Padding="10,0">
+                <Grid VerticalAlignment="Center">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="36"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <Grid Grid.Column="0">
+                        <Ellipse Width="32" Height="32"
+                                 Fill="{Binding SelfAvatarColor, Converter={StaticResource HexToBrush},
+                                                FallbackValue={StaticResource AccentBrush}}"/>
+                        <Ellipse Width="36" Height="36" StrokeThickness="2"
+                                 Stroke="{StaticResource GreenBrush}"
+                                 Visibility="{Binding IsSpeaking, Converter={StaticResource BoolToVis}}"/>
+                        <TextBlock Text="{Binding SelfNickname, Converter={StaticResource StringToInitial}}"
+                                   FontWeight="Bold" FontSize="12" Foreground="White"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Grid>
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="8,0,0,0">
+                        <TextBlock Text="{Binding SelfNickname}"
+                                   FontSize="13" FontWeight="SemiBold"
+                                   Foreground="{StaticResource TextPrimaryBrush}"
+                                   TextTrimming="CharacterEllipsis"/>
+                        <TextBlock Text="{Binding StatusText}"
+                                   FontSize="11" Foreground="{StaticResource GreenBrush}"
+                                   Visibility="{Binding IsInVoice, Converter={StaticResource BoolToVis}}"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="4,0,0,0">
+                        <Button Style="{StaticResource VoicePillButton}" Margin="0,0,3,0"
+                                Click="ToggleMute_Click" ToolTip="Микрофон">
+                            <TextBlock FontFamily="Segoe MDL2 Assets" FontSize="13" Text="&#xE720;"
+                                       Foreground="{Binding IsMuted, Converter={StaticResource MuteColor}}"/>
+                        </Button>
+                        <Button Style="{StaticResource VoicePillButton}"
+                                Click="ToggleDeafen_Click" ToolTip="Наушники">
+                            <TextBlock FontFamily="Segoe MDL2 Assets" FontSize="13" Text="&#xE7F6;"
+                                       Foreground="{Binding IsDeafened, Converter={StaticResource DeafenColor}}"/>
+                        </Button>
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- ══ MEMBERS PANEL (right, col 5) ══════════════════════════ -->
+        <Border Grid.Column="5" Background="{StaticResource BgDarkBrush}"
+                Visibility="{Binding SelectedNetwork, Converter={StaticResource NullToVis}}">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="50"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                <Border Grid.Row="0" BorderBrush="{StaticResource SeparatorBrush}" BorderThickness="0,0,0,1" Padding="16,0">
+                    <TextBlock Text="УЧАСТНИКИ ОНЛАЙН" FontSize="11" FontWeight="SemiBold"
+                               Foreground="{StaticResource TextMutedBrush}"
+                               VerticalAlignment="Center"/>
+                </Border>
+                <ScrollViewer Grid.Row="1" Margin="0,8,0,0">
+                    <ItemsControl ItemsSource="{Binding Peers}" Margin="8,0">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Grid Margin="4,4" Height="40">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="38"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Grid Grid.Column="0" VerticalAlignment="Center">
+                                        <Ellipse Width="32" Height="32"
+                                                 Fill="{Binding AvatarColor, Converter={StaticResource HexToBrush}}"/>
+                                        <TextBlock Text="{Binding Initial}"
+                                                   FontWeight="Bold" FontSize="13" Foreground="White"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Grid>
+                                    <TextBlock Grid.Column="1" Text="{Binding Nickname}"
+                                               FontSize="13" VerticalAlignment="Center"
+                                               Foreground="{StaticResource TextSecondaryBrush}"
+                                               Margin="8,0,4,0" TextTrimming="CharacterEllipsis"/>
+                                    <TextBlock Grid.Column="2" Text="{Binding PingDisplay}"
+                                               FontSize="11" VerticalAlignment="Center"
+                                               Foreground="{StaticResource TextMutedBrush}"
+                                               Margin="0,0,4,0"/>
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </Grid>
+        </Border>
+
+        <!-- ══ CONTENT AREA (col 3) ═══════════════════════════════════ -->
+        <Grid Grid.Column="3" Background="{DynamicResource BgMidBrush}">
+
+            <!-- ── Welcome empty state (no network selected) ── -->
+            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center"
+                        Visibility="{Binding SelectedNetwork, Converter={StaticResource InvNullToVis}}">
+                <Ellipse Width="80" Height="80" HorizontalAlignment="Center">
+                    <Ellipse.Fill><SolidColorBrush Color="#FF383A40"/></Ellipse.Fill>
+                </Ellipse>
+                <TextBlock Text="Добро пожаловать в RadCord!"
+                           FontSize="22" FontWeight="Bold"
+                           Foreground="{StaticResource TextPrimaryBrush}"
+                           HorizontalAlignment="Center" Margin="0,20,0,8"/>
+                <TextBlock Text="Выбери сервер слева или создай новый нажав на +"
+                           FontSize="14" Foreground="{StaticResource TextMutedBrush}"
+                           HorizontalAlignment="Center" Margin="0,0,0,24"/>
+                <Button Content="  +  Добавить сервер  " HorizontalAlignment="Center"
+                        Style="{StaticResource AccentButton}"
+                        Padding="20,12" FontSize="15"
+                        Click="AddNetwork_Click"/>
+            </StackPanel>
+
+            <!-- ── Channel view (network selected) ── -->
+            <Grid Visibility="{Binding SelectedNetwork, Converter={StaticResource NullToVis}}">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="48"/>   <!-- Header -->
+                    <RowDefinition Height="*"/>    <!-- Messages / voice -->
+                    <RowDefinition Height="Auto"/> <!-- Input -->
+                </Grid.RowDefinitions>
+
+                <!-- Channel header -->
+                <Border Grid.Row="0" BorderBrush="{StaticResource SeparatorBrush}" BorderThickness="0,0,0,1">
+                    <StackPanel VerticalAlignment="Center" Margin="16,0">
+                        <StackPanel Orientation="Horizontal"
+                                    Visibility="{Binding IsViewingVoice, Converter={StaticResource InvBoolToVis}}">
+                            <TextBlock Text="# " FontSize="18" Foreground="{StaticResource TextMutedBrush}"/>
+                            <TextBlock Text="{Binding SelectedTextChannel}"
+                                       FontSize="15" FontWeight="SemiBold"
+                                       Foreground="{StaticResource TextPrimaryBrush}"
+                                       VerticalAlignment="Center"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal"
+                                    Visibility="{Binding IsViewingVoice, Converter={StaticResource BoolToVis}}">
+                            <TextBlock Text="&#x1F50A; " FontSize="16" VerticalAlignment="Center"
+                                       Foreground="{StaticResource GreenBrush}"/>
+                            <TextBlock Text="{Binding CurrentVoiceChannel}"
+                                       FontSize="15" FontWeight="SemiBold"
+                                       Foreground="{StaticResource TextPrimaryBrush}"
+                                       VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- Messages + optional voice grid -->
+                <Grid Grid.Row="1">
+
+                    <!-- Chat (hidden when viewing voice) -->
+                    <ScrollViewer x:Name="ChatScroll"
+                                  Visibility="{Binding IsViewingVoice, Converter={StaticResource InvBoolToVis}}">
+                        <ItemsControl ItemsSource="{Binding Messages}" Margin="0,8,0,8">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid Margin="10,2">
+                                        <!-- ── System message ── -->
+                                        <Grid Visibility="{Binding IsSystem, Converter={StaticResource BoolToVis}}"
+                                              HorizontalAlignment="Center" Margin="0,6">
+                                            <Border CornerRadius="20" Padding="14,5">
+                                                <Border.Style>
+                                                    <Style TargetType="Border">
+                                                        <Setter Property="Background" Value="#25282C"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsJoin}" Value="True">
+                                                                <Setter Property="Background" Value="#1A3A2A"/>
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding IsLeave}" Value="True">
+                                                                <Setter Property="Background" Value="#3A1A1A"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Border.Style>
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock FontSize="13" VerticalAlignment="Center" Margin="0,0,6,0">
+                                                        <TextBlock.Style>
+                                                            <Style TargetType="TextBlock">
+                                                                <Setter Property="Text" Value=""/>
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding IsJoin}" Value="True">
+                                                                        <Setter Property="Text" Value="●"/>
+                                                                        <Setter Property="Foreground" Value="{StaticResource GreenBrush}"/>
+                                                                    </DataTrigger>
+                                                                    <DataTrigger Binding="{Binding IsLeave}" Value="True">
+                                                                        <Setter Property="Text" Value="●"/>
+                                                                        <Setter Property="Foreground" Value="{StaticResource RedBrush}"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </TextBlock.Style>
+                                                    </TextBlock>
+                                                    <TextBlock Text="{Binding Content}" FontSize="13" FontWeight="SemiBold">
+                                                        <TextBlock.Style>
+                                                            <Style TargetType="TextBlock">
+                                                                <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}"/>
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding IsJoin}" Value="True">
+                                                                        <Setter Property="Foreground" Value="#57B97B"/>
+                                                                    </DataTrigger>
+                                                                    <DataTrigger Binding="{Binding IsLeave}" Value="True">
+                                                                        <Setter Property="Foreground" Value="#E05555"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </TextBlock.Style>
+                                                    </TextBlock>
+                                                    <TextBlock Text="{Binding TimeDisplay}" FontSize="11" Margin="8,0,0,0"
+                                                               Foreground="{StaticResource TextMutedBrush}"
+                                                               VerticalAlignment="Bottom"/>
+                                                </StackPanel>
+                                            </Border>
+                                        </Grid>
+
+                                        <!-- ── Self (right bubble) ── -->
+                                        <Grid Visibility="{Binding IsSystem, Converter={StaticResource InvBoolToVis}}">
+                                            <!-- Others (left) -->
+                                            <Grid Visibility="{Binding IsSelf, Converter={StaticResource InvBoolToVis}}"
+                                                  HorizontalAlignment="Left" MaxWidth="520" Margin="0,2">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="38"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                </Grid.ColumnDefinitions>
+                                                <Grid Grid.Column="0" VerticalAlignment="Bottom" Margin="0,0,0,4">
+                                                    <Ellipse Width="32" Height="32"
+                                                             Fill="{Binding AvatarColor, Converter={StaticResource HexToBrush}}"/>
+                                                    <TextBlock Text="{Binding Initial}" FontWeight="Bold" FontSize="12"
+                                                               Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                </Grid>
+                                                <StackPanel Grid.Column="1" Margin="8,0,0,0">
+                                                    <StackPanel Orientation="Horizontal" Margin="4,0,0,2">
+                                                        <TextBlock Text="{Binding Nickname}" FontSize="12" FontWeight="SemiBold"
+                                                                   Foreground="{Binding AvatarColor, Converter={StaticResource HexToBrush}}"/>
+                                                        <TextBlock Text="{Binding TimeDisplay}" FontSize="10" Margin="6,0,0,0"
+                                                                   Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Bottom"/>
+                                                    </StackPanel>
+                                                    <!-- Text bubble -->
+                                                    <Border Background="#2E3136" CornerRadius="4,16,16,16" Padding="12,8"
+                                                            HorizontalAlignment="Left" MaxWidth="460"
+                                                            Visibility="{Binding IsTextMessage, Converter={StaticResource BoolToVis}}">
+                                                        <TextBlock Text="{Binding Content}" TextWrapping="Wrap" FontSize="14"
+                                                                   Foreground="{StaticResource TextPrimaryBrush}"/>
+                                                    </Border>
+                                                    <!-- Image bubble -->
+                                                    <Border Background="#2E3136" CornerRadius="4,16,16,16" Padding="4"
+                                                            HorizontalAlignment="Left" MaxWidth="360"
+                                                            Visibility="{Binding IsImageMessage, Converter={StaticResource BoolToVis}}">
+                                                        <StackPanel>
+                                                            <Image Source="{Binding ImageSource}" MaxHeight="240" Stretch="Uniform"
+                                                                   Cursor="Hand"
+                                                                   MouseLeftButtonUp="ChatImage_Click"
+                                                                   Visibility="{Binding IsComplete, Converter={StaticResource BoolToVis}}"/>
+                                                            <StackPanel Visibility="{Binding IsComplete, Converter={StaticResource InvBoolToVis}}"
+                                                                        Margin="8,6" Orientation="Horizontal">
+                                                                <TextBlock Text="&#x1F4F7; " FontSize="16"/>
+                                                                <TextBlock Text="{Binding FileName}" FontSize="12"
+                                                                           Foreground="{StaticResource TextPrimaryBrush}" VerticalAlignment="Center"/>
+                                                                <TextBlock Text="{Binding ProgressPct, StringFormat='{}{0}%'}" FontSize="11"
+                                                                           Foreground="{StaticResource TextMutedBrush}" Margin="8,0,0,0" VerticalAlignment="Center"/>
+                                                            </StackPanel>
+                                                            <ProgressBar Value="{Binding Progress}" Maximum="1" Height="3" Margin="4,0"
+                                                                         Visibility="{Binding IsComplete, Converter={StaticResource InvBoolToVis}}"/>
+                                                        </StackPanel>
+                                                    </Border>
+                                                    <!-- File bubble -->
+                                                    <Border Background="#2E3136" CornerRadius="4,16,16,16" Padding="12,8"
+                                                            HorizontalAlignment="Left"
+                                                            Visibility="{Binding IsFileMessage, Converter={StaticResource BoolToVis}}">
+                                                        <StackPanel>
+                                                            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                                                <TextBlock Text="&#x1F4CE;" FontSize="20" Margin="0,0,8,0"/>
+                                                                <StackPanel VerticalAlignment="Center">
+                                                                    <TextBlock Text="{Binding FileName}" FontSize="13" FontWeight="SemiBold"
+                                                                               Foreground="{StaticResource TextPrimaryBrush}"/>
+                                                                    <TextBlock Text="{Binding FileSizeDisplay}" FontSize="11"
+                                                                               Foreground="{StaticResource TextMutedBrush}"/>
+                                                                </StackPanel>
+                                                            </StackPanel>
+                                                            <ProgressBar Value="{Binding Progress}" Maximum="1" Height="3"
+                                                                         Visibility="{Binding IsComplete, Converter={StaticResource InvBoolToVis}}"/>
+                                                            <Button Content="&#x2B07; Скачать" FontSize="11" Padding="6,3" Margin="0,4,0,0"
+                                                                    Background="{DynamicResource AccentBrush}" Foreground="White"
+                                                                    BorderThickness="0" HorizontalAlignment="Left"
+                                                                    Visibility="{Binding IsComplete, Converter={StaticResource BoolToVis}}"
+                                                                    Click="DownloadFile_Click" Tag="{Binding}"/>
+                                                        </StackPanel>
+                                                    </Border>
+                                                </StackPanel>
+                                            </Grid>
+                                            <!-- Self (right) -->
+                                            <StackPanel Visibility="{Binding IsSelf, Converter={StaticResource BoolToVis}}"
+                                                        HorizontalAlignment="Right" MaxWidth="520" Margin="0,2">
+                                                <TextBlock Text="{Binding TimeDisplay}" FontSize="10" Margin="0,0,4,2"
+                                                           Foreground="{StaticResource TextMutedBrush}" HorizontalAlignment="Right"/>
+                                                <!-- Text -->
+                                                <Border Background="{DynamicResource AccentBrush}"
+                                                        CornerRadius="16,4,16,16" Padding="12,8"
+                                                        Visibility="{Binding IsTextMessage, Converter={StaticResource BoolToVis}}">
+                                                    <TextBlock Text="{Binding Content}" TextWrapping="Wrap" FontSize="14" Foreground="White"/>
+                                                </Border>
+                                                <!-- Image (self) -->
+                                                <Border Background="{DynamicResource AccentBrush}" CornerRadius="16,4,16,16" Padding="4"
+                                                        MaxWidth="360" Visibility="{Binding IsImageMessage, Converter={StaticResource BoolToVis}}">
+                                                    <Image Source="{Binding ImageSource}" MaxHeight="240" Stretch="Uniform"
+                                                           Cursor="Hand" MouseLeftButtonUp="ChatImage_Click"/>
+                                                </Border>
+                                                <!-- File (self) -->
+                                                <Border Background="{DynamicResource AccentBrush}" CornerRadius="16,4,16,16" Padding="12,8"
+                                                        Visibility="{Binding IsFileMessage, Converter={StaticResource BoolToVis}}">
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <TextBlock Text="&#x1F4CE;" FontSize="18" Margin="0,0,8,0"/>
+                                                        <StackPanel VerticalAlignment="Center">
+                                                            <TextBlock Text="{Binding FileName}" FontSize="13" FontWeight="SemiBold" Foreground="White"/>
+                                                            <TextBlock Text="{Binding FileSizeDisplay}" FontSize="11" Foreground="#CCE0E0E0"/>
+                                                        </StackPanel>
+                                                    </StackPanel>
+                                                </Border>
+                                            </StackPanel>
+                                        </Grid>
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+
+                    <!-- Voice channel full view (shown when IsViewingVoice) -->
+                    <Grid Visibility="{Binding IsViewingVoice, Converter={StaticResource BoolToVis}}"
+                          Background="{DynamicResource BgDeepBrush}">
+
+                        <ItemsControl ItemsSource="{Binding VoicePeers}"
+                                      HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel Orientation="Horizontal" HorizontalAlignment="Center"
+                                               VerticalAlignment="Center" Margin="20"/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Width="{Binding CardWidth}" Height="{Binding CardHeight}"
+                                            Margin="8" CornerRadius="12"
+                                            Background="{DynamicResource BgMidBrush}"
+                                            ClipToBounds="True"
+                                            Tag="{Binding}"
+                                            PreviewMouseLeftButtonDown="VoiceCard_PreviewMouseLeftButtonDown"
+                                            PreviewMouseMove="VoiceCard_PreviewMouseMove"
+                                            PreviewMouseLeftButtonUp="VoiceCard_PreviewMouseLeftButtonUp">
+                                        <Border.RenderTransform>
+                                            <TranslateTransform X="{Binding CardOffsetX}" Y="{Binding CardOffsetY}"/>
+                                        </Border.RenderTransform>
+                                        <Border.ContextMenu>
+                                            <ContextMenu Background="#1E1F22" BorderBrush="#3A3B3E" BorderThickness="1">
+                                                <ContextMenu.Resources>
+                                                    <Style TargetType="MenuItem">
+                                                        <Setter Property="Background" Value="Transparent"/>
+                                                        <Setter Property="Foreground" Value="#DCDDDE"/>
+                                                        <Setter Property="FontSize" Value="13"/>
+                                                    </Style>
+                                                    <Style TargetType="Separator">
+                                                        <Setter Property="Background" Value="#3A3B3E"/>
+                                                        <Setter Property="Margin" Value="0,2"/>
+                                                    </Style>
+                                                </ContextMenu.Resources>
+                                                <MenuItem Header="{Binding PlacementTarget.Tag.Nickname, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                          IsHitTestVisible="False" FontSize="13" FontWeight="Bold"
+                                                          Foreground="White" Padding="12,9"/>
+                                                <Separator/>
+                                                <MenuItem Header="&#x1F507; Заглушить для меня"
+                                                          Visibility="{Binding PlacementTarget.Tag.CanShowVoiceNotMuted, RelativeSource={RelativeSource AncestorType=ContextMenu}, Converter={StaticResource BoolToVis}}"
+                                                          Tag="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                          Click="ContextLocalMute_Click" Padding="12,7"/>
+                                                <MenuItem Header="&#x1F50A; Включить голос"
+                                                          Visibility="{Binding PlacementTarget.Tag.CanShowVoiceMuted, RelativeSource={RelativeSource AncestorType=ContextMenu}, Converter={StaticResource BoolToVis}}"
+                                                          Tag="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                          Click="ContextLocalMute_Click" Padding="12,7"/>
+                                                <MenuItem Header="&#x1F509; Громкость участника"
+                                                          IsHitTestVisible="False" FontSize="10" Foreground="#888" Padding="12,3"
+                                                          Visibility="{Binding PlacementTarget.Tag.CanMuteVoice, RelativeSource={RelativeSource AncestorType=ContextMenu}, Converter={StaticResource BoolToVis}}"/>
+                                                <MenuItem Visibility="{Binding PlacementTarget.Tag.CanMuteVoice, RelativeSource={RelativeSource AncestorType=ContextMenu}, Converter={StaticResource BoolToVis}}"
+                                                          Padding="8,2">
+                                                    <MenuItem.Header>
+                                                        <Slider Width="150" Minimum="0" Maximum="100"
+                                                                Value="{Binding PlacementTarget.Tag.VolumePercent, RelativeSource={RelativeSource AncestorType=ContextMenu}, Mode=OneWay}"
+                                                                Tag="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                                ValueChanged="PeerVolSlider_Changed"/>
+                                                    </MenuItem.Header>
+                                                </MenuItem>
+                                                <Separator Visibility="{Binding PlacementTarget.Tag.CanControlStream, RelativeSource={RelativeSource AncestorType=ContextMenu}, Converter={StaticResource BoolToVis}}"/>
+                                                <MenuItem Header="&#x1F507; Стрим: без звука"
+                                                          Visibility="{Binding PlacementTarget.Tag.CanShowStreamMuted, RelativeSource={RelativeSource AncestorType=ContextMenu}, Converter={StaticResource BoolToVis}}"
+                                                          Tag="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                          Click="ContextStreamMute_Click" Padding="12,7" Foreground="#E05555"/>
+                                                <MenuItem Header="&#x1F50A; Стрим: со звуком"
+                                                          Visibility="{Binding PlacementTarget.Tag.CanShowStreamUnmuted, RelativeSource={RelativeSource AncestorType=ContextMenu}, Converter={StaticResource BoolToVis}}"
+                                                          Tag="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                          Click="ContextStreamMute_Click" Padding="12,7" Foreground="#23A55A"/>
+                                                <MenuItem Header="&#x1F509; Громкость стрима"
+                                                          IsHitTestVisible="False" FontSize="10" Foreground="#888" Padding="12,3"
+                                                          Visibility="{Binding PlacementTarget.Tag.CanControlStream, RelativeSource={RelativeSource AncestorType=ContextMenu}, Converter={StaticResource BoolToVis}}"/>
+                                                <MenuItem Visibility="{Binding PlacementTarget.Tag.CanControlStream, RelativeSource={RelativeSource AncestorType=ContextMenu}, Converter={StaticResource BoolToVis}}"
+                                                          Padding="8,2">
+                                                    <MenuItem.Header>
+                                                        <Slider Width="150" Minimum="0" Maximum="100"
+                                                                Value="{Binding PlacementTarget.Tag.StreamVolume, RelativeSource={RelativeSource AncestorType=ContextMenu}, Mode=OneWay}"
+                                                                Tag="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                                ValueChanged="StreamVolSlider_Changed"/>
+                                                    </MenuItem.Header>
+                                                </MenuItem>
+                                                <MenuItem Header="&#x26F6; Открыть стрим в окне"
+                                                          Visibility="{Binding PlacementTarget.Tag.CanControlStream, RelativeSource={RelativeSource AncestorType=ContextMenu}, Converter={StaticResource BoolToVis}}"
+                                                          Tag="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                          Click="ContextOpenStream_Click" Padding="12,7"/>
+                                            </ContextMenu>
+                                        </Border.ContextMenu>
+                                        <Grid>
+                                            <!-- Normal view (no stream) -->
+                                            <StackPanel Visibility="{Binding IsSharing, Converter={StaticResource InvBoolToVis}}"
+                                                        VerticalAlignment="Center" HorizontalAlignment="Center">
+                                                <Grid HorizontalAlignment="Center" Margin="0,0,0,12">
+                                                    <Ellipse Width="80" Height="80"
+                                                             Fill="{Binding AvatarColor, Converter={StaticResource HexToBrush}}"/>
+                                                    <TextBlock Text="{Binding Initial}"
+                                                               FontWeight="Bold" FontSize="30" Foreground="White"
+                                                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                </Grid>
+                                                <TextBlock Text="{Binding Nickname}" MaxWidth="140"
+                                                           TextTrimming="CharacterEllipsis" HorizontalAlignment="Center"
+                                                           Foreground="{DynamicResource TextPrimaryBrush}"
+                                                           FontSize="14" FontWeight="SemiBold"/>
+                                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center"
+                                                            Margin="0,6,0,0">
+                                                    <TextBlock Text="&#x1F3A7;" FontSize="12" Margin="0,0,4,0"
+                                                               Foreground="#E05555"
+                                                               Visibility="{Binding LocalMuted, Converter={StaticResource BoolToVis}}"/>
+                                                    <TextBlock Text="&#x1F507;" FontSize="12" Margin="0,0,4,0"
+                                                               Visibility="{Binding Muted, Converter={StaticResource BoolToVis}}"/>
+                                                    <TextBlock Text="&#x1F515;" FontSize="12"
+                                                               Visibility="{Binding Deafened, Converter={StaticResource BoolToVis}}"/>
+                                                </StackPanel>
+                                            </StackPanel>
+
+                                            <!-- Watch button (IsSharing && !IsWatching) -->
+                                            <Button Visibility="{Binding IsShowingWatchButton, Converter={StaticResource BoolToVis}}"
+                                                    Background="#1A1A1A" BorderThickness="0"
+                                                    Click="WatchStreamStart_Click" Tag="{Binding}"
+                                                    HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+                                                    Cursor="Hand">
+                                                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                                                    <TextBlock Text="&#x1F4FA;" FontSize="28" HorizontalAlignment="Center" Margin="0,0,0,6"/>
+                                                    <TextBlock Text="{Binding Nickname}" FontSize="12" FontWeight="SemiBold"
+                                                               HorizontalAlignment="Center" Foreground="White"
+                                                               MaxWidth="130" TextTrimming="CharacterEllipsis" Margin="0,0,0,4"/>
+                                                    <TextBlock Text="Поделился стримом" FontSize="10"
+                                                               HorizontalAlignment="Center" Foreground="#888"/>
+                                                    <TextBlock Text="Нажмите чтобы смотреть" FontSize="10"
+                                                               HorizontalAlignment="Center"
+                                                               Foreground="{DynamicResource AccentBrush}" Margin="0,3,0,0"/>
+                                                </StackPanel>
+                                            </Button>
+
+                                            <!-- Inline stream (IsSharing && IsWatching) -->
+                                            <Grid Visibility="{Binding IsShowingStream, Converter={StaticResource BoolToVis}}">
+                                                <Image Source="{Binding StreamFrameSource}"
+                                                       Stretch="Uniform"
+                                                       HorizontalAlignment="Stretch" VerticalAlignment="Stretch"/>
+                                                <Border Background="#1A1A1A"
+                                                        Visibility="{Binding StreamFrameSource, Converter={StaticResource InvNullToVis}}">
+                                                    <TextBlock Text="&#x1F4FA;" FontSize="28"
+                                                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                               Foreground="#555"/>
+                                                </Border>
+                                                <!-- Bottom overlay: nickname + buttons -->
+                                                <Border VerticalAlignment="Bottom" Background="#AA000000" Padding="6,4">
+                                                    <Grid>
+                                                        <TextBlock Text="{Binding Nickname}" FontSize="11" FontWeight="SemiBold"
+                                                                   Foreground="White" VerticalAlignment="Center"
+                                                                   MaxWidth="110" TextTrimming="CharacterEllipsis"/>
+                                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right"
+                                                                    Margin="0,0,22,0">
+                                                            <Button Content="&#x2715;" Width="24" Height="24"
+                                                                    Background="Transparent" BorderThickness="0"
+                                                                    Foreground="White" FontSize="12" Padding="0"
+                                                                    ToolTip="Закрыть" Click="ExitStream_Click" Tag="{Binding}"/>
+                                                            <Button Content="&#x26F6;" Width="24" Height="24"
+                                                                    Background="Transparent" BorderThickness="0"
+                                                                    Foreground="White" FontSize="14" Padding="0"
+                                                                    Margin="4,0,0,0" ToolTip="Отдельное окно"
+                                                                    Click="WatchScreen_Click" Tag="{Binding}"/>
+                                                        </StackPanel>
+                                                    </Grid>
+                                                </Border>
+                                                <!-- Resize grip (bottom-right) -->
+                                                <Thumb Width="18" Height="18"
+                                                       HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                                                       Cursor="SizeNWSE" Tag="{Binding}"
+                                                       DragDelta="StreamResize_DragDelta">
+                                                    <Thumb.Template>
+                                                        <ControlTemplate TargetType="Thumb">
+                                                            <Path Data="M 0,12 L 12,0 M 4,12 L 12,4 M 8,12 L 12,8"
+                                                                  Stroke="White" StrokeThickness="1.5" Opacity="0.6"
+                                                                  Margin="3"/>
+                                                        </ControlTemplate>
+                                                    </Thumb.Template>
+                                                </Thumb>
+                                            </Grid>
+
+                                            <!-- Speaking ring — last in z-order to appear over stream -->
+                                            <Border CornerRadius="12" BorderThickness="3" IsHitTestVisible="False"
+                                                    Visibility="{Binding IsSpeaking, Converter={StaticResource BoolToVis}}">
+                                                <Border.BorderBrush><SolidColorBrush Color="#FF23A55A"/></Border.BorderBrush>
+                                            </Border>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </Grid>
+
+                </Grid>
+
+                <!-- Input bar (hidden when viewing voice) -->
+                <Border Grid.Row="2" Padding="16,10"
+                        Visibility="{Binding IsViewingVoice, Converter={StaticResource InvBoolToVis}}">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <Border Grid.Column="0" Background="{StaticResource BgLightBrush}" CornerRadius="8">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Button Grid.Column="0" Width="38" Height="38" Margin="4,0,0,0"
+                                        Background="Transparent" BorderThickness="0"
+                                        Foreground="{StaticResource TextMutedBrush}" FontSize="18"
+                                        ToolTip="Прикрепить файл (Ctrl+V для вставки из буфера)"
+                                        Click="AttachFile_Click"
+                                        Content="&#x1F4CE;"/>
+                                <TextBox x:Name="ChatInputBox" Grid.Column="1"
+                                         Background="Transparent" BorderThickness="0"
+                                         Foreground="{StaticResource TextPrimaryBrush}"
+                                         CaretBrush="{StaticResource TextPrimaryBrush}"
+                                         SelectionBrush="{StaticResource AccentBrush}"
+                                         Text="{Binding MessageInput, UpdateSourceTrigger=PropertyChanged}"
+                                         Padding="8,11,14,11" FontSize="14"
+                                         PreviewKeyDown="ChatInputBox_KeyDown"
+                                         VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="1" Text="{Binding SelectedTextChannel, StringFormat='Написать в #{0}', FallbackValue='Напишите сообщение...'}"
+                                           Foreground="{StaticResource TextMutedBrush}"
+                                           FontSize="14" Margin="10,0,0,0"
+                                           VerticalAlignment="Center" IsHitTestVisible="False">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding MessageInput}" Value="">
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </Grid>
+                        </Border>
+                        <Button Grid.Column="1" Style="{StaticResource AccentButton}"
+                                Margin="10,0,0,0" Padding="20,11"
+                                FontSize="14"
+                                Command="{Binding SendMessageCommand}"
+                                Content="Отправить"/>
+                    </Grid>
+                </Border>
+            </Grid>
+
+        </Grid>
+    </Grid>
+</Window>

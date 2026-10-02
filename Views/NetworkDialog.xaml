@@ -1,0 +1,201 @@
+<Window x:Class="RadCord.Views.NetworkDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Добавить сервер"
+        Width="440" SizeToContent="Height"
+        MinHeight="380"
+        ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner"
+        Background="{StaticResource BgMidBrush}">
+
+    <StackPanel Margin="36,32,36,36">
+
+        <!-- Header -->
+        <TextBlock Text="Добавить сервер" FontSize="22" FontWeight="Bold"
+                   Foreground="{StaticResource TextPrimaryBrush}"
+                   HorizontalAlignment="Center" Margin="0,0,0,6"/>
+        <TextBlock Text="Создайте свой сервер или найдите существующий"
+                   FontSize="13" Foreground="{StaticResource TextMutedBrush}"
+                   HorizontalAlignment="Center" TextWrapping="Wrap"
+                   TextAlignment="Center" Margin="0,0,0,24"/>
+
+        <!-- ── Mode chooser (shown first) ── -->
+        <StackPanel x:Name="ChoosePanel">
+            <Button Click="TabCreate_Click" Cursor="Hand" Margin="0,0,0,12">
+                <Button.Template>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="card" Background="{StaticResource BgDarkBrush}"
+                                CornerRadius="8" Padding="20,18" BorderThickness="2"
+                                BorderBrush="Transparent">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="48"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Border Grid.Column="0" Width="40" Height="40"
+                                        CornerRadius="20" Background="{StaticResource AccentBrush}">
+                                    <TextBlock Text="+" FontSize="22" FontWeight="Bold"
+                                               Foreground="White"
+                                               HorizontalAlignment="Center"
+                                               VerticalAlignment="Center"/>
+                                </Border>
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="12,0,0,0">
+                                    <TextBlock Text="Создать сервер"
+                                               FontSize="15" FontWeight="SemiBold"
+                                               Foreground="{StaticResource TextPrimaryBrush}"/>
+                                    <TextBlock Text="Начните своё сообщество"
+                                               FontSize="12" Foreground="{StaticResource TextMutedBrush}"
+                                               Margin="0,2,0,0"/>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="card" Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Button.Template>
+            </Button>
+
+            <Button Click="TabJoin_Click" Cursor="Hand">
+                <Button.Template>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="card2" Background="{StaticResource BgDarkBrush}"
+                                CornerRadius="8" Padding="20,18" BorderThickness="2"
+                                BorderBrush="Transparent">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="48"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Border Grid.Column="0" Width="40" Height="40"
+                                        CornerRadius="20" Background="{StaticResource GreenBrush}">
+                                    <TextBlock Text="🔍" FontSize="18"
+                                               HorizontalAlignment="Center"
+                                               VerticalAlignment="Center"/>
+                                </Border>
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="12,0,0,0">
+                                    <TextBlock Text="Найти в сети"
+                                               FontSize="15" FontWeight="SemiBold"
+                                               Foreground="{StaticResource TextPrimaryBrush}"/>
+                                    <TextBlock Text="Присоединитесь к существующему серверу"
+                                               FontSize="12" Foreground="{StaticResource TextMutedBrush}"
+                                               Margin="0,2,0,0"/>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="card2" Property="BorderBrush" Value="{StaticResource GreenBrush}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Button.Template>
+            </Button>
+
+            <Button Content="Отмена" Style="{StaticResource GhostButton}"
+                    Padding="0,11" Margin="0,20,0,0"
+                    Click="Cancel_Click"/>
+        </StackPanel>
+
+        <!-- ── CREATE form ── -->
+        <StackPanel x:Name="CreatePanel" Visibility="Collapsed">
+            <Button Content="←  Назад"
+                    Style="{StaticResource GhostButton}"
+                    HorizontalAlignment="Left"
+                    Padding="10,7" Margin="0,0,0,20"
+                    Click="BackToChoose_Click"/>
+
+            <TextBlock Text="НАЗВАНИЕ СЕРВЕРА" FontSize="11" FontWeight="SemiBold"
+                       Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,6"/>
+            <Border Background="{StaticResource BgInputBrush}" CornerRadius="4" Margin="0,0,0,14">
+                <TextBox x:Name="NameBox"
+                         Background="Transparent" BorderThickness="0"
+                         Foreground="{StaticResource TextPrimaryBrush}"
+                         CaretBrush="{StaticResource TextPrimaryBrush}"
+                         SelectionBrush="{StaticResource AccentBrush}"
+                         MaxLength="48" Padding="12,10" FontSize="14"/>
+            </Border>
+
+            <TextBlock Text="ПАРОЛЬ" FontSize="11" FontWeight="SemiBold"
+                       Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,6"/>
+            <Border Background="{StaticResource BgInputBrush}" CornerRadius="4" Margin="0,0,0,6">
+                <PasswordBox x:Name="PasswordBox"
+                             Background="Transparent" BorderThickness="0"
+                             Foreground="{StaticResource TextPrimaryBrush}"
+                             CaretBrush="{StaticResource TextPrimaryBrush}"
+                             MaxLength="64" Padding="12,10" FontSize="14"/>
+            </Border>
+            <TextBlock Text="Участники с одинаковым именем и паролем окажутся на одном сервере."
+                       FontSize="12" Foreground="{StaticResource TextMutedBrush}"
+                       TextWrapping="Wrap" Margin="0,0,0,20"/>
+
+            <TextBlock x:Name="ErrorText" Foreground="{StaticResource RedBrush}"
+                       FontSize="12" Margin="0,0,0,8" Visibility="Collapsed"/>
+
+            <Button Content="Создать" Style="{StaticResource AccentButton}"
+                    Padding="0,13" FontSize="15" Click="Add_Click"/>
+        </StackPanel>
+
+        <!-- ── JOIN form ── -->
+        <StackPanel x:Name="JoinPanel" Visibility="Collapsed">
+            <Button Content="←  Назад"
+                    Style="{StaticResource GhostButton}"
+                    HorizontalAlignment="Left"
+                    Padding="10,7" Margin="0,0,0,20"
+                    Click="BackToChoose_Click"/>
+
+            <DockPanel Margin="0,0,0,8">
+                <Button DockPanel.Dock="Right" Content="Сканировать"
+                        Style="{StaticResource AccentButton}"
+                        Padding="14,6" Click="Scan_Click"/>
+                <TextBlock Text="Серверы в сети"
+                           FontSize="13" FontWeight="SemiBold"
+                           Foreground="{StaticResource TextSecondaryBrush}"
+                           VerticalAlignment="Center"/>
+            </DockPanel>
+            <Border Background="{StaticResource BgDarkBrush}" CornerRadius="6" Height="160" Margin="0,0,0,14">
+                <Grid>
+                    <TextBlock x:Name="ScanStatus" Text="Нажми «Сканировать» для поиска…"
+                               Foreground="{StaticResource TextMutedBrush}"
+                               FontSize="13"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    <ListBox x:Name="ScanList" Background="Transparent" BorderThickness="0"
+                             Foreground="{StaticResource TextPrimaryBrush}"
+                             SelectionChanged="ScanList_SelectionChanged">
+                        <ListBox.ItemContainerStyle>
+                            <Style TargetType="ListBoxItem">
+                                <Setter Property="Background" Value="Transparent"/>
+                                <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+                                <Setter Property="Padding" Value="10,8"/>
+                                <Style.Triggers>
+                                    <Trigger Property="IsSelected" Value="True">
+                                        <Setter Property="Background" Value="{StaticResource AccentBrush}"/>
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </ListBox.ItemContainerStyle>
+                    </ListBox>
+                </Grid>
+            </Border>
+
+            <TextBlock Text="ПАРОЛЬ" FontSize="11" FontWeight="SemiBold"
+                       Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,6"/>
+            <Border Background="{StaticResource BgInputBrush}" CornerRadius="4" Margin="0,0,0,20">
+                <PasswordBox x:Name="JoinPasswordBox"
+                             Background="Transparent" BorderThickness="0"
+                             Foreground="{StaticResource TextPrimaryBrush}"
+                             CaretBrush="{StaticResource TextPrimaryBrush}"
+                             MaxLength="64" Padding="12,10" FontSize="14"/>
+            </Border>
+
+            <TextBlock x:Name="JoinErrorText" Foreground="{StaticResource RedBrush}"
+                       FontSize="12" Margin="0,0,0,8" Visibility="Collapsed"/>
+
+            <Button Content="Присоединиться" Style="{StaticResource AccentButton}"
+                    Padding="0,13" FontSize="15" Click="Add_Click"/>
+        </StackPanel>
+
+    </StackPanel>
+</Window>

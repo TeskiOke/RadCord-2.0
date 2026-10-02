@@ -1,0 +1,18 @@
+﻿# Build artifacts
+bin/
+obj/
+publish_release/
+publish/
+
+# Local profile / config data
+profile*/
+*.json.bak
+
+# Visual Studio
+*.user
+*.suo
+.vs/
+
+# OS
+Thumbs.db
+desktop.ini
